@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-localhost}
+      POSTGRES_DB: ${POSTGRES_DB:-application}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_otus_application:/var/lib/postgresql/data
+
+volumes:
+  postgres_otus_application:

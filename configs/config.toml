@@ -1,0 +1,18 @@
+[Logger]
+Level = "INFO"
+FileName = "logs/app.log"
+
+[Server]
+Host = "127.0.0.1"
+Port = "8080"
+
+[Storage]
+Dsn = "postgres://user:password@localhost:5432/application?sslmode=disable"
+
+[Migrations]
+AutoMigrate = true
+Dir = "migrations"
+Dsn = "postgres://user:password@localhost:5432/application?sslmode=disable"
+
+[App]
+CacheTtl = "10s"
