@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // Register postgres driver
 	"github.com/pressly/goose/v3"
 )
 

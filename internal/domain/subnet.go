@@ -14,6 +14,4 @@ type Subnet struct {
 	CIDR     string
 }
 
-var (
-	ErrSubnetNotFound = errors.New("subnet not found")
-)
+var ErrSubnetNotFound = errors.New("subnet not found")

@@ -5,20 +5,40 @@ linters-settings:
   funlen:
     lines: 150
     statements: 80
+  depguard:
+    rules:
+      Main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/gomonov/otus-go-project/internal
+          - github.com/spf13/viper
+          - github.com/jmoiron/sqlx
+          - github.com/pressly/goose/v3
+          - github.com/sirupsen/logrus
+          - github.com/lib/pq
+          - github.com/yl2chen/cidranger
+      Test:
+        files:
+          - $test
+        allow:
+          - $gostd
+          - github.com/stretchr/testify
+          - github.com/gomonov/otus-go-project/internal
 
 linters:
   disable-all: true
   enable:
     - asciicheck
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - durationcheck
     - errorlint
     - exhaustive
-    - exportloopref
     - funlen
     - gci
     - gocognit
@@ -35,7 +55,6 @@ linters:
     - gosec
     - gosimple
     - govet
-    - ifshort
     - importas
     - ineffassign
     - lll
@@ -51,7 +70,6 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - structcheck
     - stylecheck
     - tagliatelle
     - thelper
@@ -60,6 +78,5 @@ linters:
     - unconvert
     - unparam
     - unused
-    - varcheck
     - wastedassign
     - whitespace
