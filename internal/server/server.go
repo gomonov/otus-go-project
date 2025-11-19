@@ -26,7 +26,7 @@ type Application interface {
 	CreateSubnet(subnet *domain.Subnet) error
 	DeleteSubnet(listType domain.ListType, cidr string) error
 	GetSubnetsByListType(listType domain.ListType) ([]domain.Subnet, error)
-	CheckIPAccess(ip string) (domain.AuthResponse, error)
+	CheckAuth(req domain.AuthRequest) (domain.AuthResponse, error)
 }
 
 type Conf struct {

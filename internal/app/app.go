@@ -1,16 +1,19 @@
 package app
 
 import (
+	"context"
 	"time"
 
 	"github.com/gomonov/otus-go-project/internal/domain"
+	"github.com/gomonov/otus-go-project/internal/ratelimit"
 	"github.com/gomonov/otus-go-project/internal/storage"
 )
 
 type App struct {
-	logger  Logger
-	storage storage.Storage
-	cache   *IPListsCache
+	logger      Logger
+	storage     storage.Storage
+	cache       *IPListsCache
+	rateLimiter *ratelimit.RateLimiter
 }
 
 type Logger interface {
@@ -20,8 +23,8 @@ type Logger interface {
 	Warn(args ...interface{})
 }
 
-func New(logger Logger, storage storage.Storage, cacheTTL time.Duration) *App {
-	return &App{logger: logger, storage: storage, cache: newIPListsCache(cacheTTL)}
+func New(logger Logger, storage storage.Storage, cacheTTL time.Duration, rateLimiter *ratelimit.RateLimiter) *App {
+	return &App{logger: logger, storage: storage, cache: newIPListsCache(cacheTTL), rateLimiter: rateLimiter}
 }
 
 func (a *App) CreateSubnet(subnet *domain.Subnet) error {
@@ -39,24 +42,52 @@ func (a *App) GetSubnetsByListType(listType domain.ListType) ([]domain.Subnet, e
 	return a.storage.Subnet().GetByListType(listType)
 }
 
-func (a *App) CheckIPAccess(ip string) (domain.AuthResponse, error) {
+func (a *App) CheckAuth(req domain.AuthRequest) (domain.AuthResponse, error) {
+	ipStatus, err := a.checkIPInLists(req.IP)
+	if err != nil {
+		return domain.AuthResponse{}, err
+	}
+
+	if ipStatus == domain.IPInBlacklist {
+		a.logger.Info("IP blocked by blacklist", "ip", req.IP)
+		return domain.AuthResponse{OK: false}, nil
+	}
+
+	if ipStatus == domain.IPInWhitelist {
+		a.logger.Info("IP allowed by whitelist", "ip", req.IP)
+		return domain.AuthResponse{OK: true}, nil
+	}
+
+	if err := a.rateLimiter.Check(context.Background(), req.Login, req.Password, req.IP); err != nil {
+		a.logger.Warn("Rate limit exceeded",
+			"login", req.Login,
+			"ip", req.IP,
+			"error", err.Error())
+		return domain.AuthResponse{OK: false}, nil
+	}
+
+	a.logger.Info("Auth request allowed",
+		"login", req.Login,
+		"ip", req.IP)
+	return domain.AuthResponse{OK: true}, nil
+}
+
+func (a *App) checkIPInLists(ip string) (domain.IPListStatus, error) {
 	if a.cache.needsReload() {
 		a.logger.Debug("Reloading IP lists cache")
 
-		// Загружаем данные из базы
 		blacklist, err := a.storage.Subnet().GetByListType(domain.Blacklist)
 		if err != nil {
-			return domain.AuthResponse{}, err
+			return domain.IPNotInList, err
 		}
 
 		whitelist, err := a.storage.Subnet().GetByListType(domain.Whitelist)
 		if err != nil {
-			return domain.AuthResponse{}, err
+			return domain.IPNotInList, err
 		}
 
-		// Обновляем кеш
 		if err := a.cache.reload(blacklist, whitelist); err != nil {
-			return domain.AuthResponse{}, err
+			return domain.IPNotInList, err
 		}
 
 		a.logger.Info("IP lists cache reloaded",
@@ -64,13 +95,5 @@ func (a *App) CheckIPAccess(ip string) (domain.AuthResponse, error) {
 			"whitelist_count", len(whitelist))
 	}
 
-	status, err := a.cache.checkIP(ip)
-	if err != nil {
-		return domain.AuthResponse{}, err
-	}
-
-	response := domain.AuthResponse{OK: status}
-	a.logger.Debug("IP check completed", "ip", ip, "result", status)
-
-	return response, nil
+	return a.cache.checkIP(ip)
 }

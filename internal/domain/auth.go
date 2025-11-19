@@ -1,13 +1,19 @@
 package domain
 
-type AuthStatus string
+type IPListStatus string
 
 const (
-	AuthDenied  AuthStatus = "denied"
-	AuthGranted AuthStatus = "granted"
-	AuthUnknown AuthStatus = "unknown"
+	IPInBlacklist IPListStatus = "blacklist"
+	IPInWhitelist IPListStatus = "whitelist"
+	IPNotInList   IPListStatus = "not_in_list"
 )
 
+type AuthRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+	IP       string `json:"ip"`
+}
+
 type AuthResponse struct {
-	OK AuthStatus `json:"ok"`
+	OK bool `json:"ok"`
 }

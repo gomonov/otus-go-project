@@ -16,3 +16,12 @@ Dsn = "postgres://user:password@localhost:5432/application?sslmode=disable"
 
 [App]
 CacheTtl = "10s"
+LoginLimit = 10      # N
+PasswordLimit = 100  # M
+IpLimit = 1000       # K
+Window = 60          # 60 секунд = 1 минута
+
+[Redis]
+Address = "localhost:6379"
+Password = ""
+DB = 0
