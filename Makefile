@@ -16,5 +16,8 @@ install-lint-deps:
 lint: install-lint-deps
 	golangci-lint run ./...
 
+lint-fix: install-lint-deps
+	golangci-lint run --fix ./...
+
 test:
 	go test -race -count 100 ./internal/ratelimit

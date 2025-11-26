@@ -71,7 +71,6 @@ func (r *RateLimiter) ResetBuckets(ctx context.Context, login, ip string) error 
 		}
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to reset buckets: %w", err)
 	}
