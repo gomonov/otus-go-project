@@ -27,6 +27,7 @@ type Application interface {
 	DeleteSubnet(listType domain.ListType, cidr string) error
 	GetSubnetsByListType(listType domain.ListType) ([]domain.Subnet, error)
 	CheckAuth(req domain.AuthRequest) (domain.AuthResponse, error)
+	ResetBuckets(req domain.ResetBucketsRequest) (domain.ResetBucketsResponse, error)
 }
 
 type Conf struct {

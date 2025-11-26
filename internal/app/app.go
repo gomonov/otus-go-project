@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gomonov/otus-go-project/internal/domain"
@@ -96,4 +97,26 @@ func (a *App) checkIPInLists(ip string) (domain.IPListStatus, error) {
 	}
 
 	return a.cache.checkIP(ip)
+}
+
+func (a *App) ResetBuckets(req domain.ResetBucketsRequest) (domain.ResetBucketsResponse, error) {
+	if req.Login == "" && req.IP == "" {
+		return domain.ResetBucketsResponse{Reset: false},
+			fmt.Errorf("either login or ip must be provided")
+	}
+
+	err := a.rateLimiter.ResetBuckets(context.Background(), req.Login, req.IP)
+	if err != nil {
+		a.logger.Error("Failed to reset buckets",
+			"login", req.Login,
+			"ip", req.IP,
+			"error", err.Error())
+		return domain.ResetBucketsResponse{Reset: false}, err
+	}
+
+	a.logger.Info("Buckets reset successfully",
+		"login", req.Login,
+		"ip", req.IP)
+
+	return domain.ResetBucketsResponse{Reset: true}, nil
 }
