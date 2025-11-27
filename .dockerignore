@@ -1,0 +1,8 @@
+.git
+.gitignore
+README.md
+bin/
+logs/
+*.log
+.dockerignore
+deployments/

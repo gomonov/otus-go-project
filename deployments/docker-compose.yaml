@@ -1,21 +1,55 @@
-version: "3"
+version: "3.8"
 
 services:
   postgres:
     image: postgres:18
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST:-localhost}
       POSTGRES_DB: ${POSTGRES_DB:-application}
       POSTGRES_USER: ${POSTGRES_USER:-user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_otus_application:/var/lib/postgresql/data
+      - postgres_otus_application:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-application}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:8.4.0
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  application:
+    build:
+      context: ..
+      dockerfile: deployments/app/Dockerfile
+    environment:
+      ABF_SERVER_HOST: "0.0.0.0"
+      ABF_DATABASE_URL: "postgres://user:password@postgres:5432/application?sslmode=disable"
+      ABF_REDIS_ADDRESS: "redis:6379"
+      ABF_LOGGER_FILENAME: ""
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  cli:
+    build:
+      context: ..
+      dockerfile: deployments/cli/Dockerfile
+    depends_on:
+      - application
 
 volumes:
   postgres_otus_application:

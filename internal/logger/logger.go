@@ -40,21 +40,30 @@ func New(conf Conf) (*Logger, error) {
 
 	logger.SetFormatter(&CleanFormatter{})
 
-	file, err := os.OpenFile(conf.FileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
-	if err != nil {
-		return nil, err
+	var logFile *os.File
+	var output io.Writer = os.Stdout
+
+	if conf.FileName != "" {
+		file, err := os.OpenFile(conf.FileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open log file: %w", err)
+		}
+		logFile = file
+		output = io.MultiWriter(os.Stdout, file)
 	}
 
-	logger.SetOutput(io.MultiWriter(os.Stdout, file))
+	logger.SetOutput(output)
 
 	return &Logger{
 		Logger:  logger,
-		logFile: file,
+		logFile: logFile,
 	}, nil
 }
 
 func (l *Logger) Close() {
-	l.logFile.Close()
+	if l.logFile != nil {
+		l.logFile.Close()
+	}
 }
 
 func (l *Logger) SetLogLevel(level string) error {

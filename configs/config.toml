@@ -15,7 +15,7 @@ Dir = "migrations"
 Dsn = "postgres://user:password@localhost:5432/application?sslmode=disable"
 
 [App]
-CacheTtl = "10s"
+CacheTTl = "10s"
 LoginLimit = 10      # N
 PasswordLimit = 100  # M
 IpLimit = 1000       # K
