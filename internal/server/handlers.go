@@ -90,6 +90,11 @@ func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 				"path":        "/whitelist",
 				"description": "Remove subnet from whitelist",
 			},
+			{
+				"method":      "POST",
+				"path":        "/auth",
+				"description": "Check authorization with IP lists and rate limiting",
+			},
 		},
 	}
 
@@ -253,26 +258,31 @@ func (s *Server) removeFromWhitelistHandler(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) authHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	ip := r.URL.Query().Get("ip")
-	if ip == "" {
-		s.sendError(w, "IP parameter is required", http.StatusBadRequest)
+	var req domain.AuthRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.sendError(w, "Invalid JSON body", http.StatusBadRequest)
 		return
 	}
 
-	response, err := s.app.CheckIPAccess(ip)
+	if req.Login == "" || req.Password == "" || req.IP == "" {
+		s.sendError(w, "login, password and ip are required", http.StatusBadRequest)
+		return
+	}
+
+	response, err := s.app.CheckAuth(req)
 	if err != nil {
 		if isValidationError(err) {
 			s.sendError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		s.logger.Error(fmt.Sprintf("IP check failed for %s: %v", ip, err))
-		s.sendError(w, fmt.Sprintf("IP check failed: %v", err), http.StatusInternalServerError)
+		s.logger.Error(fmt.Sprintf("Auth check failed: %v", err))
+		s.sendError(w, fmt.Sprintf("Auth check failed: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -282,7 +292,8 @@ func (s *Server) authHandler(w http.ResponseWriter, r *http.Request) {
 func isValidationError(err error) bool {
 	errorMsg := err.Error()
 	return strings.Contains(errorMsg, "invalid IP address") ||
-		strings.Contains(errorMsg, "only IPv4 addresses are supported")
+		strings.Contains(errorMsg, "only IPv4 addresses are supported") ||
+		strings.Contains(errorMsg, "IP lists not initialized")
 }
 
 func (s *Server) convertSubnetsToResponse(subnets []domain.Subnet) SubnetsListResponse {

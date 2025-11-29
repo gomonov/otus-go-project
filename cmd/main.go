@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os/signal"
 	"syscall"
 	"time"
@@ -12,9 +11,10 @@ import (
 	"github.com/gomonov/otus-go-project/internal/config"
 	"github.com/gomonov/otus-go-project/internal/logger"
 	migrations "github.com/gomonov/otus-go-project/internal/migration"
+	"github.com/gomonov/otus-go-project/internal/ratelimit"
 	"github.com/gomonov/otus-go-project/internal/server"
-	"github.com/gomonov/otus-go-project/internal/storage"
 	"github.com/gomonov/otus-go-project/internal/storage/sqlstorage"
+	"github.com/redis/go-redis/v9"
 )
 
 var configFile string
@@ -45,20 +45,32 @@ func main() {
 		panic(err)
 	}
 
-	var store storage.Storage
-
-	store, err = sqlstorage.NewStorage(cfg.Storage.Dsn)
+	store, err := sqlstorage.NewStorage(cfg.Storage.Dsn)
 	if err != nil {
-		log.Fatal("Failed to connect to PostgreSQL:", err)
+		panic(err)
 	}
+	defer store.Close()
 
-	defer func() {
-		if err := store.Close(); err != nil {
-			logg.Error("Failed to close storage: " + err.Error())
-		}
-	}()
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Address,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
 
-	application := app.New(logg, store, cfg.App.CacheTTL)
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		store.Close()
+		panic(err)
+	}
+	defer redisClient.Close()
+
+	rateLimiter := ratelimit.NewRateLimiter(redisClient, ratelimit.Config{
+		LoginLimit:    cfg.App.LoginLimit,
+		PasswordLimit: cfg.App.PasswordLimit,
+		IPLimit:       cfg.App.IPLimit,
+		Window:        cfg.App.Window,
+	})
+
+	application := app.New(logg, store, cfg.App.CacheTTL, rateLimiter)
 
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)

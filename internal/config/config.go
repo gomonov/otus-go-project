@@ -13,6 +13,7 @@ type Config struct {
 	Storage    StorageConf
 	Migrations MigrationsConf
 	App        AppConf
+	Redis      RedisConf
 }
 
 type LoggerConf struct {
@@ -36,7 +37,17 @@ type MigrationsConf struct {
 }
 
 type AppConf struct {
-	CacheTTL time.Duration
+	CacheTTL      time.Duration
+	LoginLimit    int
+	PasswordLimit int
+	IPLimit       int
+	Window        int
+}
+
+type RedisConf struct {
+	Address  string
+	Password string
+	DB       int
 }
 
 func LoadConfig(configPath string) (*Config, error) {

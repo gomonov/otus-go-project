@@ -74,41 +74,40 @@ func (c *IPListsCache) reload(blacklist, whitelist []domain.Subnet) error {
 	return nil
 }
 
-func (c *IPListsCache) checkIP(ipStr string) (domain.AuthStatus, error) {
+func (c *IPListsCache) checkIP(ipStr string) (domain.IPListStatus, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	if !c.isInitialized {
-		return domain.AuthUnknown, fmt.Errorf("IP lists not initialized")
+		return domain.IPNotInList, fmt.Errorf("IP lists not initialized")
 	}
 
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
-		return domain.AuthUnknown, fmt.Errorf("invalid IP address: %s", ipStr)
+		return domain.IPNotInList, fmt.Errorf("invalid IP address: %s", ipStr)
 	}
 
-	// Проверяем IPv4
 	if ip.To4() == nil {
-		return domain.AuthUnknown, fmt.Errorf("only IPv4 addresses are supported")
+		return domain.IPNotInList, fmt.Errorf("only IPv4 addresses are supported")
 	}
 
 	inBlacklist, err := c.blacklist.Contains(ip)
 	if err != nil {
-		return domain.AuthUnknown, fmt.Errorf("blacklist check failed: %w", err)
+		return domain.IPNotInList, fmt.Errorf("blacklist check failed: %w", err)
 	}
 
 	if inBlacklist {
-		return domain.AuthDenied, nil
+		return domain.IPInBlacklist, nil
 	}
 
 	inWhitelist, err := c.whitelist.Contains(ip)
 	if err != nil {
-		return domain.AuthUnknown, fmt.Errorf("whitelist check failed: %w", err)
+		return domain.IPNotInList, fmt.Errorf("whitelist check failed: %w", err)
 	}
 
 	if inWhitelist {
-		return domain.AuthGranted, nil
+		return domain.IPInWhitelist, nil
 	}
 
-	return domain.AuthUnknown, nil
+	return domain.IPNotInList, nil
 }
