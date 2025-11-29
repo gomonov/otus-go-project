@@ -39,6 +39,7 @@ func (s *Server) setupRoutes() *http.ServeMux {
 	mux.HandleFunc("/blacklist", s.blacklistHandler)
 	mux.HandleFunc("/whitelist", s.whitelistHandler)
 	mux.HandleFunc("/auth", s.authHandler)
+	mux.HandleFunc("/reset", s.resetHandler)
 
 	return mux
 }
@@ -94,6 +95,11 @@ func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 				"method":      "POST",
 				"path":        "/auth",
 				"description": "Check authorization with IP lists and rate limiting",
+			},
+			{
+				"method":      "POST",
+				"path":        "/reset",
+				"description": "Reset rate limit buckets for login and/or IP",
 			},
 		},
 	}
@@ -283,6 +289,33 @@ func (s *Server) authHandler(w http.ResponseWriter, r *http.Request) {
 
 		s.logger.Error(fmt.Sprintf("Auth check failed: %v", err))
 		s.sendError(w, fmt.Sprintf("Auth check failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	s.sendJSON(w, response, http.StatusOK)
+}
+
+func (s *Server) resetHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req domain.ResetBucketsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.sendError(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Login == "" && req.IP == "" {
+		s.sendError(w, "either login or ip must be provided", http.StatusBadRequest)
+		return
+	}
+
+	response, err := s.app.ResetBuckets(req)
+	if err != nil {
+		s.logger.Error(fmt.Sprintf("Reset buckets failed: %v", err))
+		s.sendError(w, fmt.Sprintf("Reset buckets failed: %v", err), http.StatusInternalServerError)
 		return
 	}
 

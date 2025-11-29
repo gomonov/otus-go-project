@@ -56,3 +56,24 @@ func (r *RateLimiter) Check(ctx context.Context, login, password, ip string) err
 
 	return nil
 }
+
+func (r *RateLimiter) ResetBuckets(ctx context.Context, login, ip string) error {
+	keys := []string{
+		fmt.Sprintf("ratelimit:login:%s", login),
+		fmt.Sprintf("ratelimit:ip:%s", ip),
+	}
+
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, key := range keys {
+			if err := pipe.Del(ctx, key).Err(); err != nil {
+				return fmt.Errorf("failed to delete key %s: %w", key, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reset buckets: %w", err)
+	}
+
+	return nil
+}
