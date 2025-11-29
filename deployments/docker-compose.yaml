@@ -28,6 +28,7 @@ services:
       retries: 5
 
   application:
+    container_name: bf-application
     build:
       context: ..
       dockerfile: deployments/app/Dockerfile
@@ -45,6 +46,7 @@ services:
         condition: service_healthy
 
   cli:
+    container_name: bf-cli
     build:
       context: ..
       dockerfile: deployments/cli/Dockerfile

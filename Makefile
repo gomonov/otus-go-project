@@ -3,7 +3,19 @@ CLI_BIN := "./bin/cli"
 DOCKER_COMPOSE_FILE := "./deployments/docker-compose.yaml"
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
 
-.PHONY: build build-cli run run-local run-cli cli stop logs run-detached version install-lint-deps lint test clean help
+.PHONY: build build-cli run run-local run-cli cli stop logs version install-lint-deps lint test clean help
+
+run:
+	docker compose -f $(DOCKER_COMPOSE_FILE) up --build -d
+
+stop:
+	docker compose -f $(DOCKER_COMPOSE_FILE) down
+
+cli:
+	docker compose -f $(DOCKER_COMPOSE_FILE) run --rm cli -url http://application:8080 $(filter-out $@,$(MAKECMDGOALS))
+
+logs:
+	docker logs bf-application -f
 
 build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd
@@ -11,26 +23,11 @@ build:
 build-cli:
 	go build -v -o $(CLI_BIN) ./cmd/cli
 
-run:
-	docker compose -f $(DOCKER_COMPOSE_FILE) up --build
-
 run-local: build
 	$(BIN) -config ./configs/config.toml
 
 run-cli: build-cli
 	$(CLI_BIN) -url http://localhost:8080 $(filter-out $@,$(MAKECMDGOALS))
-
-cli:
-	docker compose -f $(DOCKER_COMPOSE_FILE) run --rm cli -url http://application:8080 $(filter-out $@,$(MAKECMDGOALS))
-
-stop:
-	docker compose -f $(DOCKER_COMPOSE_FILE) down
-
-logs:
-	docker compose -f $(DOCKER_COMPOSE_FILE) logs -f
-
-run-detached:
-	docker compose -f $(DOCKER_COMPOSE_FILE) up --build -d
 
 version: build
 	$(BIN) version
@@ -57,12 +54,11 @@ help:
 	@echo "Доступные команды:"
 	@echo ""
 	@echo "  run              - Запуск полного сервиса через Docker Compose (основная команда)"
+	@echo "  stop             - Остановка Docker сервисов"
+	@echo "  cli              - Запуск CLI команды в Docker (без передачи параметров вывод help)"
+	@echo "  logs             - Просмотр логов"
 	@echo "  run-local        - Сборка и запуск основного приложения локально"
 	@echo "  run-cli          - Сборка и запуск CLI инструмента локально с аргументами"
-	@echo "  cli              - Запуск CLI команды в Docker"
-	@echo "  stop             - Остановка Docker сервисов"
-	@echo "  logs             - Просмотр логов"
-	@echo "  run-detached     - Запуск в фоновом режиме"
 	@echo "  build            - Сборка основного приложения"
 	@echo "  build-cli        - Сборка CLI инструмента"
 	@echo "  version          - Показать версию приложения"
@@ -72,13 +68,13 @@ help:
 	@echo "  help             - Показать эту справку"
 	@echo ""
 	@echo "Примеры использования:"
-	@echo "  make run                           # Запуск полного сервиса (Docker)"
-	@echo "  make run-local                     # Локальный запуск для разработки"
-	@echo "  make run-cli blacklist list        # Использование CLI локально"
-	@echo "  make cli blacklist list            # Использование CLI в Docker"
-	@echo "  make cli -- reset --login user1    # Использование CLI с флагами"
-	@echo "  make stop                          # Остановка сервисов"
-	@echo "  make logs                          # Просмотр логов"
+	@echo "  make run                              # Запуск полного сервиса (Docker)"
+	@echo "  make logs                             # Просмотр логов (можно запустить в другом окне терминала, чтобы видеть логи запросов к сервису)"
+	@echo "  make cli                              # Справка по командам"
+	@echo "  make cli blacklist add 192.168.1.0/24 # Добавить подсеть в чёрный список"
+	@echo "  make cli blacklist list               # Вывести чёрный список"
+	@echo "  make cli -- reset --login user1       # Очистить бакеты для логина"
+	@echo "  make stop                             # Остановка сервисов"
 
 %:
 	@:

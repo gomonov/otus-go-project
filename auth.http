@@ -1,0 +1,31 @@
+### Справка по методам
+GET http://localhost:8080
+Content-Type: application/json
+
+###
+
+### Список подсетей в чёрном списке
+GET http://localhost:8080/blacklist
+Content-Type: application/json
+
+###
+
+### Добавить подсеть в чёрный список
+POST http://localhost:8080/blacklist
+Content-Type: application/json
+
+{
+  "cidr": "192.168.1.0/32"
+}
+
+###
+
+### Авторизация с ip из подсети чёрного списка
+POST http://localhost:8080/auth
+Content-Type: application/json
+
+{
+  "login": "user1",
+  "password": "password123",
+  "ip": "192.168.1.1"
+}
